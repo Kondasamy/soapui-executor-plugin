@@ -1,0 +1,390 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+	<script type="text/javascript" src="${rootURL}/plugin/SoapUIExecutor/js/comments.js"></script>
+	<script type="text/javascript" src="${rootURL}/plugin/SoapUIExecutor/js/report.js"></script>
+	<script type="text/javascript" src="${rootURL}/plugin/SoapUIExecutor/js/request.js"></script>
+	<style type="text/css">
+		p {
+        line-height:1.5em;
+        margin-top:0.5em; margin-bottom:1.0em;
+      }
+      h1 {
+        margin: 0px 0px 5px;
+		font: bold 200% verdana,arial,helvetica
+      }
+      h2 {
+        margin-top: 1em; margin-bottom: 0.5em;
+		font: bold 150% verdana,arial,helvetica;
+		text-align:left
+      }
+      h3 {
+        margin-bottom: 0.5em;
+		font: bold 120% verdana,arial,helvetica
+      }
+	  .name {
+		text-align:left;
+	  }
+	  .failedname {
+		text-align:left;
+		font-weight:bold;
+		color:red;
+	  }
+      .failure {
+        font-weight:bold; color:red;
+      }
+	  .cancel {
+        font-weight:bold; color:grey;
+      }
+	  .success {
+        font-weight:bold; color:green;
+      }
+	  .total {
+        font-weight:bold; background:#a6caf0;
+      }
+	  .normal {
+        background:#eeeee0;
+	  }
+	  table.rs tr th{
+        font-weight: bold;
+        text-align: center;
+        background:#a6caf0;
+      }
+	  table.frs tr th{
+        font-weight: bold;
+        text-align: center;
+        background:#FF9999;
+      }
+	  table.rs tr td{
+        background:#eeeee0;
+		table-layout:fixed;
+		word-break:break-all;
+      }
+	  table.frs tr td{
+        background:#eeeee0;
+		table-layout:fixed;
+		word-break:break-all;
+      }
+	</style>
+  <t:summary icon="/plugin/SoapUIExecutor/images/48x48/soapui.png">
+	<div style="width:96%;min-width:860px;">
+	<iframe name='hidden_frame' id="hidden_frame" style="display:none"></iframe>
+		<j:if test="${it.metadata.status!='FAILED'}">
+			<h2 name="result">SoapUI Test Result - ${it.metadata.name} : <a style="color:green;">PASSED</a></h2>
+		</j:if>
+		<j:if test="${it.metadata.status=='FAILED'}">
+			<h2 name="result">SoapUI Test Result - ${it.metadata.name} : <a style="color:red;">FAILED</a></h2>
+		</j:if>
+		<j:if test="${it.metadata.fromDB=='yes'}">
+		 *
+		</j:if>
+		<hr style="width:100%;"/>
+			Hello, ${it.user}!
+			<j:if test="${it.user=='anonymous'}">Please login to grant more permissions.</j:if>
+				<l:hasPermission permission="${it.UPDATE}">
+				  <div align="left"><a href="#" onclick="editComments(document.getElementById('generalComments'))">
+					<img src="${imagesURL}/16x16/notepad.gif" alt="" />
+					<j:choose>
+					  <j:when test="${empty(it.generalComments)}">
+						${%add comments}
+					  </j:when>
+					  <j:otherwise>
+						${%edit comments}
+					  </j:otherwise>
+					</j:choose>
+				  </a></div>
+				</l:hasPermission>
+		<div id="generalComments" style="color:purple;font-weight:bold;text-align:left">${it.generalComments}</div>
+		<br/><br/>
+
+		<h2>SoapUI Projects</h2>
+		<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+			<tr valign="top"><th class="name">Project</th><th width="70">Cases(F)</th><th width="100">Steps(F)</th><th width="120">Time Taken</th><th width="70">Status</th></tr>
+			<j:forEach items="${it.metadata.projects}" var="project">
+				<tr valign="top">
+					<td class="name">
+						<a id="test-${project.name}-showlink" href="javascript:showElement('test-${project.name}')" style="">+ ${project.name} </a>
+						<a id="test-${project.name}-hidelink" style="display: none;" href="javascript:hideElement('test-${project.name}')">- ${project.name} </a>
+					</td>
+					<td style="font-weight:bold;">${project.caseCount}
+						<j:if test="${project.failedCaseCount=='0'}">(${project.failedCaseCount})</j:if>
+						<j:if test="${project.failedCaseCount!='0'}"><font color="red">(${project.failedCaseCount})</font></j:if>
+					</td>
+					<td style="font-weight:bold;">${project.stepCount}
+						<j:if test="${project.failedStepCount=='0'}">(${project.failedStepCount})</j:if>
+						<j:if test="${project.failedStepCount!='0'}"><font color="red">(${project.failedStepCount})</font></j:if>
+					</td>
+					<td>${project.timetaken}</td>
+					<j:if test="${project.status=='FINISHED'}">
+						<td class="success">PASSED</td>
+					</j:if>
+					<j:if test="${project.status!='FINISHED'}">
+						<td class="failure">FAILED</td>
+					</j:if>
+				</tr>
+				<tr id="test-${project.name}" style="display: none;" class="hidden">
+					<td colspan="5">
+					<div style="background-color:white;">
+						<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+							<tr valign="top"><th class="name">Testcase</th><th width="60">Steps(F)</th><th width="120">Time Taken</th><th width="70">Status</th></tr>
+							<j:forEach items="${project.testsuites}" var="testsuite">
+								<j:forEach items="${testsuite.testcases}" var="testcase">
+									<tr  valign="top">
+										<td class="name">
+											<a id="test-${project.name}-${testsuite.name}-${testcase.name}-showlink" href="javascript:showElement('test-${project.name}-${testsuite.name}-${testcase.name}')" style="">+ ${testsuite.name} - ${testcase.name} </a>
+											<a id="test-${project.name}-${testsuite.name}-${testcase.name}-hidelink" style="display: none;" href="javascript:hideElement('test-${project.name}-${testsuite.name}-${testcase.name}')">- ${testsuite.name} - ${testcase.name} </a>
+										</td>
+										<td>${testcase.stepCount}(${testcase.failedStepCount})</td>
+										<td>${testcase.timetaken}</td>
+										<j:if test="${testcase.status=='FINISHED'}">
+											<td class="success">PASSED</td>
+										</j:if>
+										<j:if test="${testcase.status!='FINISHED'}">
+											<td class="failure">${testcase.status}</td>
+										</j:if>
+									</tr>
+									<tr id="test-${project.name}-${testsuite.name}-${testcase.name}" style="display: none;" class="hidden">
+										<td colspan="4">
+											<div style="background-color:white;">
+											<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+												<tr valign="top"><th width="30">#</th><th class="name" >Teststep</th><th width="160">Timestamp</th><th width="100">Time Taken</th><th width="70">Status</th></tr>
+												<j:forEach items="${testcase.teststeps}" var="teststep">
+													<tr  valign="top">
+														<td>${teststep.index}</td>
+														<td class="name">
+															<a id="test-${project.name}-${teststep.uniqueNum}-showlink" href="javascript:loadData('${rootURL}', 'test-${project.name}-${teststep.uniqueNum}', 'txts/${teststep.jsondata}')" style="">+ ${teststep.name} </a>
+															<a id="test-${project.name}-${teststep.uniqueNum}-hidelink" style="display: none;" href="javascript:hideElement('test-${project.name}-${teststep.uniqueNum}')">- ${teststep.name} </a>
+														</td>
+														<td>${teststep.timestamp}</td>
+														<td>${teststep.timetaken}</td>
+														<j:if test="${teststep.status!='FAILED'}">
+															<td class="success">${teststep.status}</td>
+														</j:if>
+														<j:if test="${teststep.status=='FAILED'}">
+															<td class="failure">${teststep.status}</td>
+														</j:if>
+													</tr>
+													
+													<tr id="test-${project.name}-${teststep.uniqueNum}" style="display: none;" class="hidden" hasData="false">
+													</tr>
+												</j:forEach>
+											</table>
+											</div>
+										</td>
+									</tr>
+								</j:forEach>
+							</j:forEach>
+						</table>
+						</div>
+					</td>
+				</tr>
+			</j:forEach>
+		</table>
+		<a href="#top">Back to top</a>
+		<br/><br/><br/>
+		
+		<j:if test="${it.metadata.hasFailure!='false'}">
+			<h2>Failure List</h2>
+			<j:if test="${!empty(it.metadata.newFeatureFailures)}">★ indicates the failures against new features.</j:if>
+		    <j:if test="${it.metadata.hasNewFailure!='false'}">
+		        <j:forEach items="${it.metadata.projects}" var="project">
+		            <j:if test="${project.hasNewFailure!='false'}">
+		            <table id="newfailurelist" class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+		                <tr  valign="top"><th width="200">TQMS/Comments</th><th class="name">New Failure(s) in ${project.name}</th><th width="90">Steps(F)</th><th width="110">Time Taken</th><th width="70">Status</th><th width="100">Last PASS</th></tr>
+
+						<j:forEach items="${project.testsuites}" var="testsuite">
+							<j:forEach items="${testsuite.testcases}" var="testcase">
+								<j:if test="${testcase.status!='FINISHED'}">
+									<j:if test="${testcase.newF=='true'}">
+										<tr valign="top">
+											<td id="commId" name= "${testcase.name}" onclick="EditCell(this, '${it.generalComments}', '${it.user}', '${it.doNotAddUserName}')" style="background-color:#f0f0f0;color:red;font-weight:bold;text-align:center;">
+											<j:forEach items="${it.listComments}" var="comment">
+												<j:if test="${comment.key.equals(testcase.name)}">
+													${comment.value}
+												</j:if>
+											</j:forEach>
+											</td>
+											<td class="name">
+												<a id="failure-${project.name}-${testsuite.name}-${testcase.name}-showlink" href="javascript:showElement('failure-${project.name}-${testsuite.name}-${testcase.name}')" style="">+ ${testsuite.name} - ${testcase.name}</a>
+												<a id="failure-${project.name}-${testsuite.name}-${testcase.name}-hidelink" style="display: none;" href="javascript:hideElement('failure-${project.name}-${testsuite.name}-${testcase.name}')">- ${testsuite.name} - ${testcase.name}</a><j:if test="${!empty(testsuite.isNewFeature)}">  ★</j:if>
+											</td>
+											<td style="font-weight:bold;">${testcase.stepCount}
+												<j:if test="${testcase.failedStepCount=='0'}">(0)</j:if>
+												<j:if test="${testcase.failedStepCount!='0'}"><font color="red">(${testcase.failedStepCount})</font></j:if>
+											</td>
+											<td>${testcase.timetaken}</td>
+											<td class="failure">${testcase.status}</td>
+											<td>#<j:if test="${testcase.lastPass!=0}"><a href="${it.metadata.jobUrl}${testcase.lastPass}">${testcase.lastPass}</a></j:if>
+											<j:if test="${testcase.lastPass==0}">N/A</j:if></td>
+										</tr>
+										
+										<tr id="failure-${project.name}-${testsuite.name}-${testcase.name}" style="display: none;" class="hidden">
+											<td colspan="6">
+											<div style="background-color:white;">
+											<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+												<tr valign="top"><th width="30">#</th><th class="name" >Teststep</th><th width="160">Timestamp</th><th width="100">Time Taken</th><th width="70">Status</th></tr>
+												<j:forEach items="${testcase.teststeps}" var="teststep">
+													<tr  valign="top">
+														<td>${teststep.index}</td>
+														<td class="name">
+															<a id="failure-${project.name}-${teststep.uniqueNum}-showlink" href="javascript:loadData('${rootURL}', 'failure-${project.name}-${teststep.uniqueNum}', 'txts/${teststep.jsondata}')" style="">+ ${teststep.name} </a>
+															<a id="failure-${project.name}-${teststep.uniqueNum}-hidelink" style="display: none;" href="javascript:hideElement('failure-${project.name}-${teststep.uniqueNum}')">- ${teststep.name} </a>
+														</td>
+														<td>${teststep.timestamp}</td>
+														<td>${teststep.timetaken}</td>
+														<j:if test="${teststep.status!='FAILED'}">
+															<td class="success">${teststep.status}</td>
+														</j:if>
+														<j:if test="${teststep.status=='FAILED'}">
+															<td class="failure">${teststep.status}</td>
+														</j:if>
+													</tr>
+													
+													<tr id="failure-${project.name}-${teststep.uniqueNum}" style="display: none;" class="hidden" hasData="false">
+													</tr>
+												</j:forEach>
+											</table>
+											</div>
+										</td>
+										</tr>
+										
+									</j:if>
+								</j:if>
+							</j:forEach>
+						</j:forEach>
+					</table>
+					</j:if>
+				</j:forEach>
+			</j:if>
+
+		    <j:if test="${it.metadata.hasOldFailure!='false'}">
+			<table id="failurelist" class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+				<tr  valign="top"><th width="200">TQMS/Comments</th><th class="name">Known/Ignored Failure(s)</th><th width="90">Steps(F)</th><th width="110">Time Taken</th><th width="70">Status</th><th width="100">Last PASS</th></tr>
+				<j:forEach items="${it.metadata.projects}" var="project">
+					<j:forEach items="${project.testsuites}" var="testsuite">
+						<j:forEach items="${testsuite.testcases}" var="testcase">
+							<j:if test="${testcase.status!='FINISHED'}">
+								<j:if test="${testcase.newF!='true'}">
+									<tr  valign="top">
+										<td id="commId" name= "${testcase.name}" onclick="EditCell(this, '${it.generalComments}', '${it.user}', '${it.doNotAddUserName}')" style="background-color:#f0f0f0;color:red;font-weight:bold;text-align:center;">
+										<j:forEach items="${it.listComments}" var="comment">
+											<j:if test="${comment.key.equals(testcase.name)}">
+												${comment.value}
+											</j:if>
+										</j:forEach>
+										</td>
+										<td class="name">
+											<a id="failure-${project.name}-${testsuite.name}-${testcase.name}-showlink" href="javascript:showElement('failure-${project.name}-${testsuite.name}-${testcase.name}')" style="">+ ${testsuite.name} - ${testcase.name} </a>
+											<a id="failure-${project.name}-${testsuite.name}-${testcase.name}-hidelink" style="display: none;" href="javascript:hideElement('failure-${project.name}-${testsuite.name}-${testcase.name}')">- ${testsuite.name} - ${testcase.name} </a>
+										</td>
+										<td style="font-weight:bold;">${testcase.stepCount}
+											<j:if test="${testcase.failedStepCount=='0'}">(0)</j:if>
+											<j:if test="${testcase.failedStepCount!='0'}"><font color="red">(${testcase.failedStepCount})</font></j:if>
+										</td>
+										<td>${testcase.timetaken}</td>
+										<td class="failure">${testcase.status}</td>
+										<td>-</td>
+									</tr>
+									
+									<tr id="failure-${project.name}-${testsuite.name}-${testcase.name}" style="display: none;" class="hidden">
+										<td colspan="6">
+											<div style="background-color:white;">
+											<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0">
+												<tr valign="top"><th width="30">#</th><th class="name" >Teststep</th><th width="160">Timestamp</th><th width="100">Time Taken</th><th width="70">Status</th></tr>
+												<j:forEach items="${testcase.teststeps}" var="teststep">
+													<tr  valign="top">
+														<td>${teststep.index}</td>
+														<td class="name">
+															<a id="failure-${project.name}-${teststep.uniqueNum}-showlink" href="javascript:loadData('${rootURL}', 'failure-${project.name}-${teststep.uniqueNum}', 'txts/${teststep.jsondata}')" style="">+ ${teststep.name} </a>
+															<a id="failure-${project.name}-${teststep.uniqueNum}-hidelink" style="display: none;" href="javascript:hideElement('failure-${project.name}-${teststep.uniqueNum}')">- ${teststep.name} </a>
+														</td>
+														<td>${teststep.timestamp}</td>
+														<td>${teststep.timetaken}</td>
+														<j:if test="${teststep.status!='FAILED'}">
+															<td class="success">${teststep.status}</td>
+														</j:if>
+														<j:if test="${teststep.status=='FAILED'}">
+															<td class="failure">${teststep.status}</td>
+														</j:if>
+													</tr>
+													
+													<tr id="failure-${project.name}-${teststep.uniqueNum}" style="display: none;" class="hidden" hasData="false">
+													</tr>
+												</j:forEach>
+											</table>
+											</div>
+										</td>
+									</tr>
+									
+								</j:if>
+							</j:if>
+						</j:forEach>
+					</j:forEach>
+				</j:forEach>
+			</table>
+		    </j:if>
+			<a href="#top">Back to top</a>
+			<br/>
+		<p><br/><br/><br/></p>
+		</j:if>
+
+		<h2 name="api_list">API List</h2>
+		<hr style="width:100%;"/>
+		<table id="apilist" class="pane bigtable sortable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:center;" width="100%" cellspacing="2" cellpadding="5" border="0" align="right">
+				<tr  valign="center"><th width="200">Comments</th><th class="name"><a href="#" class="sortheader" onclick="ts_resortTable(this);return false;">API URL</a></th><th width="70"><a href="#" class="sortheader" onclick="ts_resortTable(this);return false;">Status</a></th>
+				<th width="80"><a href="#" class="sortheader" onclick="ts_resortTable(this);return false;">Avg. ms</a></th><th width="80"><a href="#" class="sortheader" onclick="ts_resortTable(this);return false;">Max. ms</a></th><th width="80"><a href="#" class="sortheader" onclick="ts_resortTable(this);return false;">Min. ms</a></th>
+				</tr>
+				<j:forEach items="${it.metadata.apis}" var="api">
+					<j:if test="${api.status=='FAILED'}">
+						<tr  valign="top">
+								<td name= "${api.n}" onclick="EditCell(this, '${it.generalComments}', '${it.user}', '${it.doNotAddUserName}')" style="background-color:#f0f0f0;color:red;font-weight:bold;text-align:center;">
+										<j:forEach items="${it.listComments}" var="comment">
+											<j:if test="${comment.key.equals(api.n)}">
+												${comment.value}
+											</j:if>
+										</j:forEach>
+								</td>
+							<td class="failure name">${api.url}
+							<a id="api-${api.n}-showlink" href="javascript:showElement('api-${api.n}')" style=""> view details</a>
+							<a id="api-${api.n}-hidelink" href="javascript:hideElement('api-${api.n}')" style="display: none;"> hide details</a>
+								<div id="api-${api.n}" style="display: none;background-color:white;" class="hidden" >
+									<table class="pane bigtable" style="table-layout:fixed;word-break:break-all;white-space:normal;text-align:left;" width="100%" cellspacing="2" cellpadding="5" border="0">
+										<j:forEach items="${api.txts}" var="apitxt">
+											<tr  valign="top">
+												<td><a href="javascript:openTxt('txts/${apitxt}')">${apitxt}</a></td>
+											</tr>
+										</j:forEach>
+									</table>
+								</div>
+							</td>
+							<td class="failure">${api.status}</td>
+							<td>${api.avg}</td>
+							<td>${api.max}</td>
+							<td>${api.min}</td>
+						</tr>
+					</j:if>
+				</j:forEach>
+				<j:forEach items="${it.metadata.apis}" var="api">
+					<j:if test="${api.status!='FAILED'}">
+						<tr  valign="top">
+								<td name= "${api.n}" onclick="EditCell(this, '${it.generalComments}', '${it.user}', '${it.doNotAddUserName}')" style="background-color:#f0f0f0;color:red;font-weight:bold;text-align:center;">
+										<j:forEach items="${it.listComments}" var="comment">
+											<j:if test="${comment.key.equals(api.n)}">
+												${comment.value}
+											</j:if>
+										</j:forEach>
+								</td>
+							<td class="success name">${api.url}</td>
+							<td class="success">${api.status}</td>
+							<td>${api.avg}</td>
+							<td>${api.max}</td>
+							<td>${api.min}</td>
+						</tr>
+					</j:if>
+				</j:forEach>
+		</table>
+		<a href="#top">Back to top</a>
+			<br/><br/>
+		<p><br/><br/><br/></p>
+
+	</div>
+  </t:summary>
+</j:jelly>
