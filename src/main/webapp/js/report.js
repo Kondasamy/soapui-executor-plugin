@@ -102,6 +102,7 @@ function loadData(root, id, url){
                     }
                 }
               }
+            url = 'txts/' + encodeURIComponent(url.substring(5));
             xmlhttp.open("GET",url,true);
             //xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
             xmlhttp.send();
